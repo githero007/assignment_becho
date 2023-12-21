@@ -9,7 +9,8 @@ const app = express();
 const router = require("./routes/routes");
 const Grid = require("gridfs-stream");
 const mongodb = require("mongodb");
-const crypto = require('crypto')
+const crypto = require('crypto');
+const { ObjectId } = require("mongodb");
 app.set("view engine", "ejs");
 app.use(express.json());
 connectToMongo();
@@ -54,10 +55,13 @@ app.post("/upload", upload.single("file"), (req, res, next) => {
 });
 app.get("/files", async (req, res) => {
     try {
+
+
         let files = await gfs.files.find().toArray();
         if (!files || files.length === 0) {
             return res.status(500).send("internal server error occured");
         }
+
         console.log(files);
         return res.status(200).send("files are logged successfully");
     } catch (error) {
@@ -83,9 +87,9 @@ app.get("/read/:filename", (req, res) => {
     try {
         const db = conn.db;
         const bucket = new mongodb.GridFSBucket(db, { bucketName: "uploads" });
-        const cursor = bucket.find({}).forEach((element) => {
-            console.log(element);
-        });
+        // const cursor = bucket.find({}).forEach((element) => {
+        //     console.log(element);
+        // });
 
         const downloadStream = bucket.openDownloadStreamByName(req.params.filename);
         downloadStream.pipe(res);
@@ -94,6 +98,23 @@ app.get("/read/:filename", (req, res) => {
         res.status(400).send("file nai vetairaxaian ta yr");
     }
 });
+app.delete('/pdfDelete/:id', async (req, res) => {
+    try {
+
+        const db = conn.db;
+        const bucket = new mongodb.GridFSBucket(db, { bucketName: "uploads" });
+        let store = new ObjectId(req.params.id);
+        console.log(store)
+        const deletedFile = await bucket.delete(store);
+        if (!deletedFile) {
+            return res.status(404).send("file doesnot exist")
+        }
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).send(error)
+    }
+})
 app.use(router);
 
 app.listen(3000, console.log("server is listening on port 3000"));
